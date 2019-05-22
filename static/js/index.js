@@ -39,6 +39,7 @@ $(function () {
 			{ id:234, pId:23, name:"叶子节点234"},
 			{ id:3, pId:0, name:"父节点3 - 没有子节点", isParent:true}
 		];
+
    $(document).ready(function(){
       $.fn.zTree.init($("#myTree"), setting, zNodes);
    });
