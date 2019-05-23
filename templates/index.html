@@ -8,7 +8,19 @@
     <link href="https://cdn.bootcss.com/zTree.v3/3.5.30/css/metroStyle/metroStyle.min.css" rel="stylesheet">
     <!--<link href="https://cdn.bootcss.com/zTree.v3/3.5.30/css/zTreeStyle/zTreeStyle.min.css" rel="stylesheet">-->
     <link href="https://cdn.bootcss.com/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
-
+    <style type="text/css">
+        .ztree li span.button.add {
+            margin-left: 2px;
+            margin-right: -1px;
+            background-position: -144px 0;
+            vertical-align: top;
+            *vertical-align: middle
+        }
+        #div_show_alert {
+            padding: 4px 8px;
+            /*margin: 0 5px;*/
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -22,12 +34,30 @@
     <div class="container">
     <!-- Content here -->
         <div class="row">
-        <div class="col-sm-3">
-            <ul id="myTree" class="ztree"></ul>
+            <div class="col-sm-3">
+                <div class="row">
+                    <div class="input-group col-sm-9">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" id="basic-addon1">节点名称</span>
+                        </div>
+                        <input id="input_node_name" type="text" class="form-control" placeholder="NodeName" aria-label="NodeName" aria-describedby="basic-addon1">
+                    </div>
+                    <button id="btn_node_add" class="btn btn-primary col-sm-3">添加</button>
+                </div>
+            </div>
+            <div class="col-sm-9">
+                <div id="div_show_alert" role="alert">
+
+                </div>
+            </div>
         </div>
-        <div class="col-xl-9">
-          content
-        </div>
+        <div class="row">
+            <div class="col-sm-3">
+                <ul id="myTree" class="ztree"></ul>
+            </div>
+            <div class="col-xl-9">
+              content
+            </div>
         </div>
     </div>
 
