@@ -10,17 +10,19 @@ from flask.logging import default_handler
 from flask_restful import Api
 
 from routing import set_routing
-from utils.kazoo_tool import create_kazoo_client
+from utils.kazoo_tool import KazooConn
 
 
 def create_app():
     flask_app = Flask(__name__, static_url_path='/static')
     default_handler.setFormatter(logging.Formatter(
-        '[%(asctime)s] %(levelname)s in %(filename)s [%(funcName)s:%(lineno)d]: %(message)s'
+        '[%(asctime)s] %(levelname)s in %(filename)s '
+        '[%(funcName)s:%(lineno)d]: %(message)s'
     ))
     api = Api(flask_app)
     set_routing(flask_app, api)
-    zk = create_kazoo_client()
+    kazoo_conn = KazooConn.get_instance()
+    kazoo_conn.create_conn(hosts='127.0.0.1:2181')
     return flask_app
 
 

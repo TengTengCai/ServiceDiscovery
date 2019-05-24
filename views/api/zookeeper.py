@@ -5,20 +5,99 @@
 # @File    : zookeeper.py
 import logging
 
+from flask import request
 from flask.logging import default_handler
 from flask_restful import Resource
+
+from utils.kazoo_tool import KazooConn
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(default_handler)
 
-ROOT_PATH = '/platform'
+FAIL_STATUS = {
+    'status': 0,
+    'msg': 'fail'
+}
+SUCCESS_STATUS = {
+    'status': 1,
+    'msg': 'success'
+}
 
 
 class ZookeeperPath(Resource):
-    def get(self):
-        path = '{}/{}/{}/{}'.format(ROOT_PATH, env, app, version)
-        logger.debug((env, app, version))
-        return {'hello': 'world'}
+    def get(self, path):
+        path = '/'.join(path.split(','))
+        path = '/' + path
+        try:
+            kazoo_conn = KazooConn.get_instance()
+            data = kazoo_conn.get_all_nodes(path)
+        except Exception as e:
+            logger.error(e)
+            return FAIL_STATUS
+        return data
 
+    def post(self, path):
+        # path = request.form.get('path', None)
+        if len(path.split(',')) > 4:
+            return FAIL_STATUS
+        path = '/'.join(path.split(','))
+        path = '/' + path
+        logger.info(path)
+        if path is None:
+            return FAIL_STATUS
+        try:
+            zkc = KazooConn.get_instance().zkc
+            zkc.create(path)
+        except Exception as e:
+            logger.error(e)
+            return FAIL_STATUS
+        return SUCCESS_STATUS
 
+    # 修改节点名称会导致子节点的丢失，暂时只允许业主节点修改名称
+    def put(self, path):
+        new_name = request.form.get('newName', None)
+        if new_name is None:
+            logger.info("The newName parameter is empty！")
+            return FAIL_STATUS
+        path_arr = path.split(',')
+        new_path_arr = path_arr.copy()
+        new_path_arr = new_path_arr[:-1] + [new_name]
+        path = '/'.join(path_arr)
+        path = '/' + path
+        new_path = '/'.join(new_path_arr)
+        new_path = '/' + new_path
+        try:
+            zkc = KazooConn.get_instance().zkc
+            if zkc.exists(path) is None:
+                logger.info(
+                    "The path that needs to be modified does not exist!")
+                return FAIL_STATUS
+            if zkc.exists(new_path):
+                logger.info("The new path already exists!")
+                return FAIL_STATUS
+            _, stat = zkc.get(path)
+            if stat.numChildren > 0:
+                logger.info(
+                    "The path also has a subpath, "
+                    "and the name modification failed!")
+                return FAIL_STATUS
+            transaction = zkc.transaction()
+            transaction.create(new_path, b'')
+            transaction.delete(path)
+            transaction.commit()
+        except Exception as e:
+            logger.error(e)
+            return FAIL_STATUS
+        return SUCCESS_STATUS
+
+    def delete(self, path):
+        path = '/'.join(path.split(','))
+        path = '/' + path
+        try:
+            zkc = KazooConn.get_instance().zkc
+            zkc.delete(path, recursive=True)
+        except Exception as e:
+            logger.error(e)
+            return FAIL_STATUS
+        return SUCCESS_STATUS

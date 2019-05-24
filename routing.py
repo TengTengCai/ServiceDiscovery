@@ -15,5 +15,5 @@ def set_routing(app, api):
     # api路由
     api.add_resource(HelloWorld, '/v1/hello_world')
     api.add_resource(ZookeeperPath,
-                     '/v1/zookeeper/',
-                     endpoint="zookeeper")
+                     '/v1/zookeeperPath/<string:path>/',
+                     endpoint="zookeeperPath")
