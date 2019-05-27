@@ -17,6 +17,11 @@ ROOT_PATH = '/platform'
 
 
 class KazooConn(object):
+    """
+    kazoo连接对象
+    目前是单例模式，后期如果涉及到用户的登录注册可修改为工厂模式创建不同权限的kazoo连接，
+    然后将对应的连接对象存入相关用户的session中进行缓存，当用户需要使用时从session中取出对象。
+    """
     __instance = None
 
     @staticmethod
@@ -35,6 +40,12 @@ class KazooConn(object):
             KazooConn.__instance = self
 
     def create_conn(self, hosts):
+        """
+        创建连接的方法
+
+        :param hosts:
+        :return:
+        """
         # TODO: 添加zookeeper的Access Control List
         self.zk = KazooClient(hosts=hosts)
         self.zk.add_listener(kazoo_conn_listener)
@@ -46,14 +57,29 @@ class KazooConn(object):
 
     @property
     def zkc(self):
+        """
+        获取kazoo连接方法
+
+        :return:
+        """
         if self.zk is None:
             raise Exception("Please create a connection first!")
         return self.zk
 
     def close_conn(self):
+        """
+        关闭当前kazoo的连接
+        :return:
+        """
         self.zk.stop()
 
     def get_all_nodes(self, path):
+        """
+        获取当前节点所有的子孙节点
+
+        :param path:
+        :return:
+        """
         if not self.zk.exists(path):
             raise Exception("The node you are looking for does not exist!")
         _, stat = self.zk.get(path)
@@ -71,6 +97,15 @@ class KazooConn(object):
         return node_list
 
     def get_child_node(self, path, p_id, level, node_list):
+        """
+        递归遍历，获取子孙节点
+
+        :param path: 路径
+        :param p_id: 节点的创建id
+        :param level: 节点深度
+        :param node_list: 节点列表
+        :return:
+        """
         level += 1
         if level > 3:
             return node_list
@@ -95,6 +130,12 @@ class KazooConn(object):
 
 
 def kazoo_conn_listener(state):
+    """
+    连接状态监听
+
+    :param state:
+    :return:
+    """
     if state == KazooState.LOST:
         # Register somewhere that the session was lost
         logger.info('Register somewhere that the session was lost.')

@@ -7,4 +7,9 @@ from flask import render_template
 
 
 def index():
+    """
+    首页响应的函数
+
+    :return:
+    """
     return render_template("index.html")
