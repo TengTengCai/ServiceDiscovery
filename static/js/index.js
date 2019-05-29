@@ -1,6 +1,7 @@
 $(function () {
     $('#table_content').hide();
     var current_path = '';
+    var dataLevel = 4;
    console.log($.fn.jquery);
    //此时的$是jquery1.4.4.js
    var setting = {
@@ -40,6 +41,9 @@ $(function () {
      * @returns {boolean}
      */
    function setRemoveBtn(treeId, treeNode) {
+       if (treeNode.level === 0) {
+           return false
+       }
       return !treeNode.isParent;
    }
 
@@ -144,7 +148,7 @@ $(function () {
      * @returns {boolean}
      */
    function zTreeBeforeClick(treeId, treeNode, clickFlag) {
-       if (treeNode.level === 3) {
+       if (treeNode.level === dataLevel) {
            var path = getNodePath(treeNode, "");
            current_path = path;
            var path_list = path.split(',');
@@ -250,8 +254,8 @@ $(function () {
            return
        }
        var znode = nodes[0];
-       if (znode.level >= 3){
-           showAlert('danger', '该节点等级为3，无法继续添加叶子节点！');
+       if (znode.level >= dataLevel){
+           showAlert('danger', '该节点等级为'+dataLevel+'，无法继续添加叶子节点！');
            return
        }
        var path = String("");

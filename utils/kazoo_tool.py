@@ -53,6 +53,16 @@ class KazooConn(object):
         self.__zk.start(timeout=30)
         if self.__zk.exists(ROOT_PATH) is None:
             self.__zk.create(ROOT_PATH)
+            self.__zk.create("{}/dev"
+                             .format(ROOT_PATH))
+            self.__zk.create("{}/dev/new_energy"
+                             .format(ROOT_PATH))
+            self.__zk.create("{}/dev/new_energy/gateway"
+                             .format(ROOT_PATH))
+            self.__zk.create("{}/dev/new_energy/gateway/latest"
+                             .format(ROOT_PATH))
+            self.__zk.create("{}/dev/new_energy/gateway/latest/MYSQL_HOST"
+                             .format(ROOT_PATH), b'127.0.0.1')
         if not self.__zk.connected:
             # Not connected, stop trying to connect
             self.close_conn()
@@ -110,7 +120,7 @@ class KazooConn(object):
         :return:
         """
         level += 1
-        if level > 3:
+        if level > 4:
             return node_list
         children = self.__zk.get_children(path)
         for child in children:
