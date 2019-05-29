@@ -23,6 +23,7 @@ class KazooConn(object):
     然后将对应的连接对象存入相关用户的session中进行缓存，当用户需要使用时从session中取出对象。
     """
     __instance = None
+    __zk = None
 
     @staticmethod
     def get_instance():
@@ -32,7 +33,7 @@ class KazooConn(object):
         return KazooConn.__instance
 
     def __init__(self):
-        self.zk = None
+
         """ Virtually private constructor. """
         if KazooConn.__instance is not None:
             raise Exception("This class is a singleton!")
@@ -47,10 +48,12 @@ class KazooConn(object):
         :return:
         """
         # TODO: 添加zookeeper的Access Control List
-        self.zk = KazooClient(hosts=hosts)
-        self.zk.add_listener(kazoo_conn_listener)
-        self.zk.start(timeout=30)
-        if not self.zk.connected:
+        self.__zk = KazooClient(hosts=hosts)
+        self.__zk.add_listener(kazoo_conn_listener)
+        self.__zk.start(timeout=30)
+        if self.__zk.exists(ROOT_PATH) is None:
+            self.__zk.create(ROOT_PATH)
+        if not self.__zk.connected:
             # Not connected, stop trying to connect
             self.close_conn()
             raise Exception("Unable to connect.")
@@ -62,16 +65,16 @@ class KazooConn(object):
 
         :return:
         """
-        if self.zk is None:
+        if self.__zk is None:
             raise Exception("Please create a connection first!")
-        return self.zk
+        return self.__zk
 
     def close_conn(self):
         """
         关闭当前kazoo的连接
         :return:
         """
-        self.zk.stop()
+        self.__zk.stop()
 
     def get_all_nodes(self, path):
         """
@@ -80,9 +83,9 @@ class KazooConn(object):
         :param path:
         :return:
         """
-        if not self.zk.exists(path):
+        if not self.__zk.exists(path):
             raise Exception("The node you are looking for does not exist!")
-        _, stat = self.zk.get(path)
+        _, stat = self.__zk.get(path)
         path_name = str(path).split('/')[-1]
         node = {
             'pId': 0,
@@ -109,10 +112,10 @@ class KazooConn(object):
         level += 1
         if level > 3:
             return node_list
-        children = self.zk.get_children(path)
+        children = self.__zk.get_children(path)
         for child in children:
             child_path = '{}/{}'.format(path, child)
-            _, stat = self.zk.get(child_path)
+            _, stat = self.__zk.get(child_path)
             node = {
                 'pId': p_id,
                 'id': stat.czxid,
