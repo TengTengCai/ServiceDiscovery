@@ -1,4 +1,6 @@
 $(function () {
+    $('#table_content').hide();
+    var current_path = '';
    console.log($.fn.jquery);
    //此时的$是jquery1.4.4.js
    var setting = {
@@ -26,6 +28,7 @@ $(function () {
           onAsyncSuccess: onAsyncSuccess,
           beforeRemove: zTreeBeforeRemove,
           beforeRename: zTreeBeforeRename,
+          beforeClick: zTreeBeforeClick,
           //onAsyncError: onAsyncError
       }
    };
@@ -134,6 +137,99 @@ $(function () {
    }
 
     /**
+     * 树形结构的点击事件
+     * @param treeId 节点id
+     * @param treeNode 节点对象
+     * @param clickFlag
+     * @returns {boolean}
+     */
+   function zTreeBeforeClick(treeId, treeNode, clickFlag) {
+       if (treeNode.level === 3) {
+           var path = getNodePath(treeNode, "");
+           current_path = path;
+           var path_list = path.split(',');
+           var html_str = "";
+           for (var i in path_list) {
+               if (i === path_list.length - 1) {
+                   html_str += "<li class=\"breadcrumb-item active\" aria-current=\"page\">"+path_list[i]+"</li>";
+               }else{
+                   html_str += "<li class=\"breadcrumb-item\">"+path_list[i]+"</li>";
+               }
+           }
+           // 更新面包屑
+           $('#ol_breadcrumb').html(html_str);
+           // 刷新表格中的数据
+           reflashTable(path);
+           $('#table_content').show();
+           return true
+       }
+       $('#table_content').hide();
+       return true
+   }
+
+    /**
+     * 刷新配置表格
+     * @param path
+     */
+    function reflashTable(path) {
+        console.log(path.split(','));
+        $.get('/v1/zookeeperValue/'+path+'/',function (result) {
+           console.log(result);
+           var content = '';
+           for (var i = 0; i < result.length; i++) {
+               var key = result[i].key;
+               var value = result[i].value;
+               content += '<tr>\n' +
+                   '<th scope="row">'+(i+1)+'</th>\n' +
+                   '    <td>'+key+'</td>\n' +
+                   '    <td>'+value+'</td>\n' +
+                   '    <td>\n' +
+                   '        <button  key="'+key+'" val="'+value+'" type="button" class="btn btn-outline-primary btn-sm btn_edit_node" ' +
+                   'data-toggle="modal" data-target=".bd-example-modal-lg"><span class="oi oi-pencil"></span></button>\n' +
+                   '        <button  key="'+key+'" val="'+value+'" type="button" class="btn btn-outline-danger btn-sm btn_del_node"><span class="oi oi-x"></span></button>\n' +
+                   '    </td>\n' +
+                   '</tr>'
+           }
+           $('#tbody_config').html(content);
+           setListener();
+        });
+    }
+
+    /**
+     * 设置操作按钮的监听事件
+     */
+   function setListener(){
+       $('.btn_del_node').on('click', function (event) {
+           var key = $(this).attr('key');
+           var val = $(this).attr('val');
+           if (!confirm("是否要继续删除'"+key+"="+val+"'该配置项？")){
+               return
+           }
+           var path = current_path + ',' + key;
+            $.ajax({
+                url:"/v1/zookeeperValue/"+path+"/",
+                data: {},
+                type:"DELETE",
+                success: function (result) {
+                    if (result.status === 1){
+                        showAlert('success', "删除配置项成功！");
+                    } else {
+                        showAlert('warning', "删除配置项失败！");
+                    }
+                }
+
+            });
+       });
+       $('.btn_edit_node').on('click', function (event) {
+           var key = $(this).attr('key');
+           var val = $(this).attr('val');
+           $('#input_update_key').attr('old-val', key);
+           $('#input_update_value').attr('old-val', val);
+       });
+   }
+
+
+    /**
      * 添加按钮的回调函数
      */
    $('#btn_node_add').on('click', function (event) {
@@ -179,7 +275,7 @@ $(function () {
      * @returns {*}
      */
    function getNodePath(node, path) {
-       console.log(node.name);
+       //console.log(node.name);
        if (path === ""){
            path = node.name;
        }else {
@@ -237,12 +333,85 @@ $(function () {
    }
 
     /**
+     * 设置配置添加按钮的监听事件
+     */
+    $('#btn_add_path_value').on('click', function (event) {
+       var key = $('#input_key').val();
+       var value = $('#input_value').val();
+       if (key.length === 0 || value.length === 0) {
+           showAlert('danger', '输入不能为空！');
+           return
+       }
+       var patt = /^[0-9a-zA-Z_]{1,}$/;
+       if (!patt.test(key)){
+           showAlert('warning', '名称必须是数字，字母或下划线组成！');
+           return
+       }
+       $.post('/v1/zookeeperValue/'+current_path+'/',
+           {
+               'key': key,
+               'value': value,
+           },
+           function (result) {
+           if (result.status === 1) {
+               console.log('添加配置成功！');
+               $('#input_key').val("");
+               $('#input_value').val("");
+           }
+           console.log(result)
+       });
+    });
+    /**
+     * 更新配置按钮的监听
+     */
+   $("#btn_update_path_value").on('click', function (event) {
+        var oldKey = $('#input_update_key').attr('old-val');
+        var oldVal = $('#input_update_value').attr('old-val');
+        var newKey = $('#input_update_key').val();
+        var newVal = $('#input_update_value').val();
+        if (oldKey === newKey && oldVal === newVal) {
+            return
+        }
+        $.ajax({
+            url: "/v1/zookeeperValue/"+current_path+","+oldKey+"/",
+            data:{
+                key: newKey,
+                value: newVal,
+            },
+            type: "PUT",
+            success:function (result) {
+                if (result.status === 1) {
+                    // console.log("修改参数成功！");
+                    showAlert('success', "修改参数成功！");
+                    reflashTable(current_path)
+                } else {
+                    console.log("修改参数失败！");
+                    showAlert('danger', "修改参数失败！");
+                }
+                $('#edit_model').modal('hide');
+            }
+        })
+   });
+    /**
+     * 显示模态框的监听
+     */
+   $('#edit_model').on('show.bs.modal', function (event) {
+        var key = $('#input_update_key').attr('old-val');
+        var val = $('#input_update_value').attr('old-val');
+        $('#input_update_key').val(key);
+        $('#input_update_value').val(val);
+   });
+    /**
+     * 隐藏模态框的监听
+     */
+   $('#edit_model').on('hide.bs.modal', function (event) {
+        $('#input_update_key').attr('old-val', "");
+        $('#input_update_value').attr('old-val', "");
+   });
+    /**
      * 初始化zTree组件
      */
    $(document).ready(function(){
       $.fn.zTree.init($("#myTree"), setting);
    });
 });
-
-
-
