@@ -26,7 +26,17 @@ SUCCESS_STATUS = {
 
 
 class ZookeeperPath(Resource):
+    """
+    zookeeper路径的增删改查方法
+
+    """
     def get(self, path):
+        """
+        获取路径对应的所有子孙节点
+
+        :param path: 路径 以','连接 如 "platform,dev,gateway"
+        :return:
+        """
         path = '/'.join(path.split(','))
         path = '/' + path
         try:
@@ -38,6 +48,12 @@ class ZookeeperPath(Resource):
         return data
 
     def post(self, path):
+        """
+        添加对应的path
+
+        :param path: 路径 以','连接 如 "platform,dev,gateway"
+        :return:
+        """
         # path = request.form.get('path', None)
         if len(path.split(',')) > 4:
             return FAIL_STATUS
@@ -56,6 +72,12 @@ class ZookeeperPath(Resource):
 
     # 修改节点名称会导致子节点的丢失，暂时只允许业主节点修改名称
     def put(self, path):
+        """
+        修改叶子节点的名称
+
+        :param path: 路径 以','连接 如 "platform,dev,gateway"
+        :return:
+        """
         new_name = request.form.get('newName', None)
         if new_name is None:
             logger.info("The newName parameter is empty！")
@@ -86,6 +108,102 @@ class ZookeeperPath(Resource):
             transaction.create(new_path, b'')
             transaction.delete(path)
             transaction.commit()
+        except Exception as e:
+            logger.error(e)
+            return FAIL_STATUS
+        return SUCCESS_STATUS
+
+    def delete(self, path):
+        """
+        删除叶子节点
+
+        :param path: 路径 以','连接 如 "platform,dev,gateway"
+        :return:
+        """
+        path = '/'.join(path.split(','))
+        path = '/' + path
+        try:
+            zkc = KazooConn.get_instance().zkc
+            zkc.delete(path, recursive=True)
+        except Exception as e:
+            logger.error(e)
+            return FAIL_STATUS
+        return SUCCESS_STATUS
+
+
+class ZookeeperValue(Resource):
+    def get(self, path):
+        path = '/'.join(path.split(','))
+        path = '/' + path
+        node_list = []
+        try:
+            zkc = KazooConn.get_instance().zkc
+            if zkc.exists(path):
+                _, stat = zkc.get(path)
+                if stat.numChildren == 0:
+                    return node_list
+                children = zkc.get_children(path)
+                for child in children:
+                    data, _ = zkc.get(path+'/'+child)
+                    node = {
+                        'key': child,
+                        'value': data.decode("utf-8")
+                    }
+                    node_list.append(node)
+            else:
+                return FAIL_STATUS
+        except Exception as e:
+            logger.error(e)
+            return FAIL_STATUS
+        return node_list
+
+    def post(self, path):
+        path = '/'.join(path.split(','))
+        path = '/' + path
+        key = request.form.get('key', None)
+        value = request.form.get('value', None)
+        if key is None or value is None:
+            return FAIL_STATUS
+        try:
+            zkc = KazooConn.get_instance().zkc
+            if zkc.exists(path) is None:
+                return FAIL_STATUS
+            new_path = path + '/' + key
+            real_path = zkc.create(new_path, value.encode('utf-8'))
+            logger.info("{} have created!".format(real_path))
+        except Exception as e:
+            logger.error(e)
+            return FAIL_STATUS
+        return SUCCESS_STATUS
+
+    def put(self, path):
+        """
+        修改配置
+
+        :param path:
+        :return:
+        """
+        # TODO: 如果有版本控制的话，还需要进行节点备份
+        older_key = path.split(',')[-1]
+        path = '/'.join(path.split(','))
+        path = '/' + path
+        key = request.form.get('key', None)
+        value = request.form.get('value', None)
+        if key is None or value is None:
+            return FAIL_STATUS
+        try:
+            zkc = KazooConn.get_instance().zkc
+            if zkc.exists(path) is None:
+                return FAIL_STATUS
+            if older_key == key:
+                zkc.set(path, value.encode('utf-8'))
+            else:
+                i = str(path).rfind('/')
+                new_path = path[:i] + '/' + key
+                transaction = zkc.transaction()
+                transaction.create(new_path, value.encode('utf-8'))
+                transaction.delete(path)
+                transaction.commit()
         except Exception as e:
             logger.error(e)
             return FAIL_STATUS

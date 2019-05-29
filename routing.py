@@ -5,7 +5,7 @@
 # @File    : routing.py
 import views
 from views.api.helloworld import HelloWorld
-from views.api.zookeeper import ZookeeperPath
+from views.api.zookeeper import ZookeeperPath, ZookeeperValue
 
 
 def set_routing(app, api):
@@ -17,3 +17,6 @@ def set_routing(app, api):
     api.add_resource(ZookeeperPath,
                      '/v1/zookeeperPath/<string:path>/',
                      endpoint="zookeeperPath")
+    api.add_resource(ZookeeperValue,
+                     '/v1/zookeeperValue/<string:path>/',
+                     endpoint="zookeeperValue")
